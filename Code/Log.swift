@@ -1,3 +1,5 @@
+// TODO: 🚨 It is not guaranteed anymore that the order in which log functions are called is the order in which the entries are created. This should be solved, likely using AsyncStream / AsyncChannel fed to a single consumer ...
+
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func log(error: String,
                 title: String? = nil,
@@ -6,13 +8,15 @@ public func log(error: String,
                 function: String = #function,
                 line: Int = #line)
 {
-    Log.shared.log(message: error,
-                   title: title,
-                   level: .error,
-                   forUser: forUser,
-                   filePath: filePath,
-                   function: function,
-                   line: line)
+    Task {
+        await Log.shared.log(message: error,
+                             title: title,
+                             level: .error,
+                             forUser: forUser,
+                             filePath: filePath,
+                             function: function,
+                             line: line)
+    }
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
@@ -23,13 +27,15 @@ public func log(warning: String,
                 function: String = #function,
                 line: Int = #line)
 {
-    Log.shared.log(message: warning,
-                   title: title,
-                   level: .warning,
-                   forUser: forUser,
-                   filePath: filePath,
-                   function: function,
-                   line: line)
+    Task {
+        await Log.shared.log(message: warning,
+                             title: title,
+                             level: .warning,
+                             forUser: forUser,
+                             filePath: filePath,
+                             function: function,
+                             line: line)
+    }
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
@@ -40,13 +46,15 @@ public func log(_ message: String = "",
                 function: String = #function,
                 line: Int = #line)
 {
-    Log.shared.log(message: message,
-                   title: title,
-                   level: .info,
-                   forUser: forUser,
-                   filePath: filePath,
-                   function: function,
-                   line: line)
+    Task {
+        await Log.shared.log(message: message,
+                             title: title,
+                             level: .info,
+                             forUser: forUser,
+                             filePath: filePath,
+                             function: function,
+                             line: line)
+    }
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
@@ -57,29 +65,35 @@ nonisolated public func log(verbose message: String = "",
                             function: String = #function,
                             line: Int = #line)
 {
-    Log.shared.log(message: message,
-                   title: title,
-                   level: .verbose,
-                   forUser: forUser,
-                   filePath: filePath,
-                   function: function,
-                   line: line)
+    Task {
+        await Log.shared.log(message: message,
+                             title: title,
+                             level: .verbose,
+                             forUser: forUser,
+                             filePath: filePath,
+                             function: function,
+                             line: line)
+    }
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public extension Log
 {
-    nonisolated func log(message: String,
-                         title: String? = nil,
-                         level: Level = .info,
-                         forUser: Bool = false,
-                         filePath: String = #file,
-                         function: String = #function,
-                         line: Int = #line)
+    func log(message: String,
+             title: String? = nil,
+             level: Level = .info,
+             forUser: Bool = false,
+             filePath: String = #file,
+             function: String = #function,
+             line: Int = #line)
     {
         let filename = filePath.fileNameFromPath.map(String.init) ?? filePath
         
-        let entry = Entry(message: message,
+        let newID = nextEntryID
+        nextEntryID += 1
+        
+        let entry = Entry(id: newID,
+                          message: message,
                           title: title,
                           level: level,
                           forUser: forUser,
@@ -87,9 +101,7 @@ public extension Log
                           function: function,
                           line: line)
         
-        Task {
-            await log(entry)
-        }
+        log(entry)
     }
     
     func add(observer: AnyObject,
@@ -183,6 +195,7 @@ public actor Log
             return "\(fileName), \(function), line \(line)"
         }
         
+        public let id: Int
         public var message = ""
         public var title: String?
         public var level = Level.info
@@ -191,15 +204,9 @@ public actor Log
         public var function = ""
         public var line = 0
         
-        public var id: Int =
-        {
-            let newID = nextEntryID
-            nextEntryID += 1
-            return newID
-        }()
     }
     
-    private static var nextEntryID = 0
+    private var nextEntryID = 0
     
     // MARK: - Levels
     
