@@ -45,7 +45,7 @@ public protocol ReadableErrorConvertible
     var readableErrorMessage: String { get }
 }
 
-extension String: Error {}
+extension String: @retroactive Error {}
 
 public struct ReadableError: Error, CustomStringConvertible, CustomDebugStringConvertible
 {
