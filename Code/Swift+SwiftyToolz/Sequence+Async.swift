@@ -1,3 +1,4 @@
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public extension Sequence
 {
     func asyncMap<Mapped>(_ transform: @Sendable (Element) async throws -> Mapped) async rethrows -> [Mapped]
